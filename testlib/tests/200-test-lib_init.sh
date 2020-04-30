@@ -1,0 +1,642 @@
+#!/usr/bin/env bash
+#
+# ----------------------------------------------------------------------------
+# "THE BEER-WARE LICENSE" (Revision 42):
+# <grimeton@gmx.net> wrote this file. As long as you retain this notice you
+# can do whatever you want with this stuff. If we meet some day, and you think
+# this stuff is worth it, you can buy me a beer in return, Grimeton.
+#
+# The license text was written by <phk@FreeBSD.ORG> - Poul-Henning Kamp
+# ----------------------------------------------------------------------------
+#
+if ! (return 0 2>/dev/null); then
+    echo "THIS IS A LIBRARY FILE AND SHOULD NOT BE CALLED DIRECTLY. '($(realpath "${0}"))'"
+    exit 254
+fi
+# unset -f __log_write
+# function __log_write() { return 0; }
+#####
+#
+# - lib_init.sh
+#
+if __lib_package_load "init" "${ID}" "${VERSION_ID}" "base,build"; then
+    __tlog "Loaded the init package...\n"
+else
+    declare -i __T_ERROR=$?
+    __tloge "ERROR: "
+    __tlog "CANNOT LOAD PACKAGE 'lib_init' (${__T_ERROR}).\n"
+    return 254
+fi
+
+__tlogls lib_init
+#####
+#
+# - __init_stage_registered
+#
+__tlogfs __init_stage_registered
+
+__tlogts "Error 101"
+__tlogtsig 101 __init_stage_registered
+
+__tlogts "Error 102"
+__tlogtsig 102 __init_stage_registered BADSTAGE
+
+__tlogts "Error 111"
+__tlogtsig 111 __init_stage_registered 999
+
+__tlogts "Existing, registered stage."
+declare -A __INIT_STAGE_REGISTERED_STAGES=([100]=100)
+__tlogtsig 0 __init_stage_registered 100
+unset __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+unset -n __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+
+__tlogts "Existing array, missing stage."
+declare -A __INIT_STAGE_REGISTERED_STAGES=([100]=100)
+__tlogtsig 1 __init_stage_registered 200
+unset __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+unset -n __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+
+#####
+#
+# - __init_stage_register
+#
+__tlogfs __init_stage_register
+
+__tlogts "Error 101"
+__tlogtsig 101 __init_stage_register
+
+__tlogts "Error 102"
+__tlogtsig 102 __init_stage_register BADSTAGE
+
+__tlogts "Error 111"
+unset __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_123
+unset -n __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_123
+declare -agx __INIT_STAGE_ARRAY_123
+__tlogtsig 111 __init_stage_register 123
+unset __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_123
+unset -n __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_123
+
+unset __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+unset -n __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+__tlogts "New stage, here we come."
+if __init_stage_register 100; then
+    declare __T_ERROR=$?
+    if __init_stage_registered 100; then
+        __tlogtp ${__T_ERROR}
+    else
+        __tlogte ${__T_ERROR}
+    fi
+else
+    __tlogte "Could not register the stage '100' ($?)."
+fi
+unset __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+unset -n __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+
+#####
+#
+# - __init_stage_arrayname_get
+#
+__tlogfs __init_stage_arrayname_get
+
+__tlogts "Error 101"
+__tlogtsig 101 __init_stage_arrayname_get
+
+__tlogts "Error 102"
+__tlogtsig 102 __init_stage_arrayname_get BADSTAGE
+
+__tlogts "Valid stage, stdout"
+unset __T_RET
+unset -n __T_RET
+if __T_RET="$(__init_stage_arrayname_get 1234)"; then
+    if [[ "${__T_RET}" == "__INIT_STAGE_ARRAY_1234" ]]; then
+        __tlogtp 0
+    else
+        __tlogte "Returned array name does not meet expectations ($?)."
+    fi
+else
+    __tlogte "Cannot get arrayname for stage '1234' ($?)."
+fi
+
+__tlogts "Valid stage, out parameter."
+unset __T_RET __T_OUT
+unset -n __T_RET __T_OUT
+declare __T_OUT
+if __init_stage_arrayname_get 1234 __T_OUT; then
+    if [[ "${__T_OUT}" == "__INIT_STAGE_ARRAY_1234" ]]; then
+        __tlogtp 0
+    else
+        __tlogte "Returned array name does not meet expecations ($?)."
+    fi
+else
+    __tlogte "Cannot get arrayname for stage '1234' ($?)."
+fi
+
+#####
+#
+# - __init_stage_unregister
+#
+unset __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100 __INIT_STAGE_ARRAY_123 __INIT_STAGE_ARRAY_1234
+unset -n __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100 __INIT_STAGE_ARRAY_123 __INIT_STAGE_ARRAY_1234
+__tlogfs __init_stage_unregister
+
+__tlogts "Error 101"
+__tlogtsig 101 __init_stage_unregister
+
+__tlogts "Error 102"
+__tlogtsig 102 __init_stage_unregister BADSTAGE
+
+__tlogts "Error 1"
+__tlogtsig 1 __init_stage_unregister 748
+
+__tlogts "Registered stage gets unregistered."
+if __init_stage_register 100; then
+    if __init_stage_registered 100; then
+        if __init_stage_unregister 100; then
+            if declare -p __INIT_STAGE_ARRAY_100 >/dev/null 2>&1; then
+                __tlogte "Stage unregistered, but array still exists."
+            else
+                if declare -p __INIT_STAGE_REGISTERED_STAGES >/dev/null 2>&1; then
+                    if [[ ${#__INIT_STAGE_REGISTERED_STAGES[@]} -gt 0 ]]; then
+                        unset __T_LOOP_ERROR
+                        for __T_STAGE in "${__INIT_STAGE_REGISTERED_STAGES[@]}"; do
+                            if [[ "${__T_STAGE}" == "100" ]]; then
+                                declare -i __T_LOOP_ERROR=100
+                            fi
+                        done
+                        if [[ -z ${__T_LOOP_ERROR+x} ]]; then
+                            __tlogtp
+                        else
+                            __tlogte "Stage still in '__INIT_STAGE_REGISTERED_STAGES' ($?)."
+                        fi
+                    else
+                        __tlogte "No stages registered anymore, but '__INIT_STAGE_REGISTERED_STAGES' still exists ($?)."
+                    fi
+                else
+                    __tlogtp "'__INIT_STAGE_REGISTERED_STAGES' is missing ($?)."
+                fi
+            fi
+        else
+            __tlogte "Problems unregistering stage '100' ($?)."
+        fi
+    else
+        __tlogte "Problems checking if stage '100' is registered ($?)."
+    fi
+else
+    __tlogte "Problems registering stage '100' ($?)."
+fi
+
+unset __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+unset -n __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_100
+__tlogts "Registering 30 stages, Checking if everything is there, unregistering 30 stages..."
+
+declare -i __T_ERROR=0
+for i in {1..30}; do
+    if __init_stage_register ${i}; then
+        true
+    else
+        __T_ERROR=$?
+        __tloge "ERROR: "
+        __tlog "Problems registering stage '${i}'\n"
+    fi
+done
+
+if [[ ${__T_ERROR} -gt 0 ]]; then
+    __tlogte "Error registering the stages (${__T_ERROR})."
+fi
+if [[ ${__T_ERROR} -lt 1 ]]; then
+    if __aarray_exists __INIT_STAGE_REGISTERED_STAGES; then
+        true
+    else
+        declare -i __T_ERROR=$?
+        __tloge "ERROR: "
+        __tlog "'INIT_STAGE_REGISTERED_STAGES' does not exist..."
+    fi
+fi
+
+if [[ ${__T_ERROR} -gt 0 ]]; then
+    __tlogte "'__INIT_STAGE_REGISTERED_STAGES' does not exist... (${__T_ERROR})."
+fi
+
+if [[ ${__T_ERROR} -lt 1 ]]; then
+    for i in {1..30}; do
+        declare __T_ARRAYNAME="__INIT_STAGE_ARRAY_${i}"
+        if __array_exists "${__T_ARRAYNAME}"; then
+            true
+        else
+            declare -i __T_ERROR=$?
+            __tloge "ERROR: "
+            __tlog "Array '${__T_ARRAYNAME}' does not exist (${__T_ERROR})."
+        fi
+    done
+fi
+
+if [[ ${__T_ERROR} -gt 0 ]]; then
+    __tlogte "Checking for stage arrays went wrong (${__T_ERROR})."
+fi
+
+if [[ ${__T_ERROR} -lt 1 ]]; then
+    for i in {1..30}; do
+        if __init_stage_registered ${i}; then
+            true
+        else
+            declare -i __T_ERROR=$?
+            __tloge "ERROR: "
+            __tlog "Problems checking if the stages are registered (${__T_ERROR})."
+        fi
+    done
+fi
+
+if [[ ${__T_ERROR} -gt 0 ]]; then
+    __tlogte "Problems checking if the stages are registered (${__T_ERROR})."
+fi
+
+if [[ ${__T_ERROR} -lt 1 ]]; then
+    for i in {1..30}; do
+        if __init_stage_unregister ${i}; then
+            true
+        else
+            __T_ERROR=$?
+            __tloge "ERROR: "
+            __tlog "Problems unregsitering stage '${i}'."
+        fi
+    done
+fi
+
+if [[ ${__T_ERROR} -gt 0 ]]; then
+    __tlogte "Problems unregistering stages (${__T_ERROR})."
+fi
+
+if [[ ${__T_ERROR} -lt 1 ]]; then
+    for i in {1..30}; do
+        declare __T_ARRAYNAME="__INIT_STAGE_ARRAY_${i}"
+        if ! __array_exists "${__T_ARRAYNAME}"; then
+            true
+        else
+            __tloge "ERROR: "
+            __tlog "Array '${__T_ARRAYNAME}' does still exist. That's odd (0)."
+            declare -i __T_ERROR=123
+        fi
+    done
+fi
+
+if [[ ${__T_ERROR} -lt 1 ]]; then
+    if __aarray_exists __INIT_STAGE_REGISTERED_STAGES; then
+        __tloge "ERROR: "
+        __tlog "Array '__INIT_STAGE_REGISTERED_STAGES' still exists."
+        __T_ERROR=124
+    fi
+fi
+
+if [[ ${__T_ERROR} -gt 0 ]]; then
+    __tlogte "Some arrays do still exist. That's odd (${__T_ERROR})."
+fi
+
+if [[ ${__T_ERROR} -lt 1 ]]; then
+    if __array_exists __INIT_STAGE_REGISTERED_STAGES; then
+        __tlogte "'__INIT_STAGE_REGISTERED_STAGES' does still exist. This shouldn't happen."
+    else
+        __tlogtp "YEAY!"
+    fi
+fi
+
+#####
+#
+# - __init_function_registered
+#
+__tlogfs __init_function_registered
+
+__tlogts "Error 101"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 101 __init_function_registered
+
+__tlogts "Error 102"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 102 __init_function_registered BADSTAGE
+
+__tlogts "Error 103"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 103 __init_function_registered 123
+
+__tlogts "Registered function on stage."
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+if __init_stage_register 123; then
+    if __INIT_STAGE_ARRAY_123+=("__init_123"); then
+        if __init_function_registered 123 __init_123; then
+            __tlogtp $?
+        else
+            __tlogte "Function not registered (${__T_ERROR})."
+        fi
+    else
+        __tlogte "Problems adding the function name to the array ($?)."
+    fi
+else
+    __tlogte "Problems registering the stage in the fist place ($?)."
+fi
+
+if __init_stage_unregister 123; then
+    if declare -p __INIT_STAGE_ARRAY_123 >/dev/null 2>&1; then
+        __tloge "Stage unregistered but '__INIT_STAGE_ARRAY_123' still exists."
+    else
+        true
+    fi
+else
+    __tloge "PROBLEM UNREGISTERING STAGE 123 ($?)."
+fi
+
+__tlogts "Not registered function on stage"
+if __init_stage_register 123; then
+    if __init_stage_registered 123; then
+        if __init_function_registered 123 __BLEHBLUBB; then
+            __tlogte $?
+        else
+            declare -i __T_ERROR=$?
+            if [[ ${__T_ERROR} -eq 1 ]]; then
+                __tlogtp ${__T_ERROR}
+            else
+                __tlogte ${__T_ERROR}
+            fi
+        fi
+    else
+        __tlogte "Not able to check if stage '123' was registered ($?)."
+    fi
+else
+    __tlogte "Not able to register stage '123' in the first place ($?)."
+fi
+
+if __init_stage_unregister 123; then
+    true
+else
+    declare -i __T_ERROR=$?
+    __tloge "ERROR :"
+    __tlog "Problems unregistering stage '123' (${__T_ERROR})."
+fi
+
+__tlogts "Unregistered stage..."
+if __init_function_registered 321 __some_function_name; then
+    __tlogte $?
+else
+    __tlogtp $?
+fi
+
+#####
+#
+# - __init_function_register
+#
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogfs __init_function_register
+
+__tlogts "Error 101"
+__tlogtsig 101 __init_function_register
+
+__tlogts "Error 102"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 102 __init_function_register BADSTAGE
+
+__tlogts "Error 103"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 103 __init_function_register 200
+
+__tlogts "Error 104"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 104 __init_function_register 200 __not_existing_function
+
+__tlogts "Error 111"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+function __some_registered_function() {
+    echo "${FUNCNAME[0]}"
+    return 0
+}
+declare -a __INIT_STAGE_ARRAY_300=("__some_registered_function")
+declare -A __INIT_STAGE_REGISTERED_STAGES=([300]=300)
+__tlogtsig 111 __init_function_register 300 __some_registered_function
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+unset -f __some_registered_function
+
+__tlogts "Error 114"
+function __some_registered_function() {
+    echo "${FUNCNAME[0]}"
+    return 0
+}
+unset __INIT_STAGE_REGISTERED_STAGES
+unset __INIT_STAGE_ARRAY_300
+__tlogtsig 114 __init_function_register 300 __some_registered_function
+unset -f __some_registered_function
+
+__tlogts "Valid function, registered."
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+function __some_registered_function() {
+    echo "${FUNCNAME[0]}"
+    return 0
+}
+if __init_stage_register 400; then
+    if __init_stage_registered 400; then
+        if __init_function_register 400 __some_registered_function; then
+            if declare -p "__INIT_STAGE_ARRAY_400" >/dev/null 2>&1; then
+                if [[ ${#__INIT_STAGE_ARRAY_400[@]} -gt 0 ]]; then
+                    declare -i __T_ERROR_LOOP=200
+                    for __T_NAME in "${__INIT_STAGE_ARRAY_400[@]}"; do
+                        if [[ "${__T_NAME}" == "__some_registered_function" ]]; then
+                            __T_ERROR_LOOP=0
+                        fi
+                    done
+                    if [[ ${__T_ERROR_LOOP} -eq 0 ]]; then
+                        __tlogtp
+                    else
+                        __tlogte "Registered function not found."
+                    fi
+                else
+                    __tlogte "'__INIT_STAGE_ARRAY_400' is empty. That's odd."
+                fi
+            else
+                __tlogte "Cannot check if '__INIT_STAGE_ARRAY_400' exists ($?)."
+            fi
+        else
+            __T_ERROR=$?
+            __tlogte "Problems registering '__some_registered_function' on stage '400' (${__T_ERROR})."
+        fi
+    else
+        __tlogte "Problems checking if stage is registered ($?)."
+    fi
+else
+    __tlogte "Problems registering stage '400' in the fist place ($?)."
+fi
+unset -f __some_registered_function
+
+#####
+#
+# - __init_function_register_always
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogfs __init_function_register_always
+
+__tlogts "Error 101"
+__tlogtsig 101 __init_function_register_always
+
+__tlogts "Error 102"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 102 __init_function_register_always BADSTAGE
+
+__tlogts "Error 103"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 103 __init_function_register_always 333
+
+__tlogts "Error 104"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 104 __init_function_register_always 333 __some_invalid_function
+
+__tlogts "Valid function, everything else left to the function."
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+function __some_registered_function() {
+    echo "${FUNCNAME[0]}"
+    return 0
+}
+__tlogtsig 0 __init_function_register_always 444 __some_registered_function
+unset -f __some_registered_function
+
+#####
+#
+# - __init_function_unregister
+#
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogfs __init_function_unregister
+
+__tlogts "Error 101"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 101 __init_function_unregister
+
+__tlogts "Error 102"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 102 __init_function_unregister BADSTAGE
+
+__tlogts "Error 103"
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 103 __init_function_unregister 700
+
+__tlogts "Function/Stage not registered."
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+__tlogtsig 124 __init_function_unregister 700 __some_invalid_function
+
+__tlogts "Valid stage and function."
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+unset -f __some_registered_function __some_registered_function_new __some_registered_function_old
+function __some_registered_function() {
+    echo "${FUNCNAME[0]}"
+    return 0
+}
+unset __INIT_STAGE_REGISTERED_STAGES __INIT_STAGE_ARRAY_400
+if __init_stage_register 400; then
+    if __init_stage_registered 400; then
+        if __init_function_register 400 __some_registered_function; then
+            if __init_function_registered 400 __some_registered_function; then
+                if __init_function_unregister 400 __some_registered_function; then
+                    if declare -p "__INIT_STAGE_ARRAY_400" >/dev/null 2>&1; then
+                        if [[ ${#__INIT_STAGE_ARRAY_400[@]} -lt 1 ]]; then
+                            #__tlogtp "'__INIT_STAGE_ARRAY_400' is empty. So function must have been delete."
+                            __tlogtp $?
+                        else
+                            unset __T_ERROR_LOOP
+                            for __T_FN in "${__INIT_STAGE_ARRAY_400[@]}"; do
+                                if [[ "${__T_FN}" == "__some_registered_function" ]]; then
+                                    declare __T_ERROR_LOOP=1
+                                fi
+                            done
+                            if [[ -z ${__T_ERROR_LOOP+x} ]]; then
+                                __tlogtp
+                            else
+                                __tlogte "'__some_registered_function' still found."
+                            fi
+                        fi
+                    else
+                        __tlogte "'__INIT_STAGE_ARRAY_400' does not exist ($?)."
+                    fi
+                else
+                    __tlogte "Could not unregister '__some_registered_function' from '__INIT_STAGE_ARRAY_400' ($?)."
+                fi
+            else
+                __tlogte "Could not check if '__some_registered_function' is registered in stage '400' ($?)."
+            fi
+        else
+            __tlogte "Could not register '__some_registered_function' in stage '400' ($?)."
+        fi
+    else
+        __tlogte "Could not check if stage '400' is registered ($?)."
+    fi
+else
+    __tlogte "Could not register stage '400' ($?)."
+fi
+
+#####
+#
+# - __init_function_register_replace
+#
+__tlogfs __init_function_register_replace
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+
+__tlogts "Error 101"
+__tlogtsig 101 __init_function_register_replace
+
+__tlogts "Error 102"
+__tlogtsig 102 __init_function_register_replace BADSTAGE
+
+__tlogts "Error 103"
+__tlogtsig 103 __init_function_register_replace 123
+
+__tlogts "Error 104"
+__tlogtsig 104 __init_function_register_replace 123 __some_registered_function_old
+
+__tlogts "Error 105"
+__tlogtsig 105 __init_function_register_replace 123 __some_registered_function_old __some_registered_function_new
+
+__tlogts "Replacing existing function with new one."
+unset $(set | grep -E '^(_TE_|_T_).*' | awk -F "=" '{print $1}')
+unset -f __some_registered_function __some_registered_function_new __some_registered_function_old
+function __some_registered_function() {
+    echo "${FUNCNAME[0]}"
+    return 0
+}
+function __some_registered_function_new() {
+    echo "${FUNCNAME[0]}"
+    return 0
+}
+
+if __init_stage_register 100; then
+    if __init_stage_registered 100; then
+        if __init_function_register 100 __some_registered_function; then
+            if __init_function_registered 100 __some_registered_function; then
+                if __init_function_register_replace 100 __some_registered_function __some_registered_function_new; then
+                    if declare -p __INIT_STAGE_ARRAY_100 >/dev/null 2>&1; then
+                        if [[ ${#__INIT_STAGE_ARRAY_100[@]} -gt 0 ]]; then
+                            for __T_ITEM in "${__INIT_STAGE_ARRAY_100[@]}"; do
+                                if [[ "${__T_ITEM}" == "__some_registered_function" ]]; then
+                                    __tlogte "Function not replaced. Old function still found."
+                                fi
+                                if [[ "${__T_ITEM}" == "__some_registered_function_new" ]]; then
+                                    declare -i __T_ERROR_LOOP=0
+                                fi
+                            done
+                            if [[ -z ${__T_ERROR_LOOP+x} ]]; then
+                                __tlogte "New function '__some_registerd_function_new' not found."
+                            else
+                                __tlogtp "PASS."
+                            fi
+                        else
+                            __tlogte "'__INIT_STAGE_ARRAY_100' is empty. That's wrong ($?)."
+                        fi
+                    else
+                        __tlogte "Problems checking if '__INIT_STAGE_ARRAY_100' exists."
+                    fi
+                else
+                    __tlogte "Problem running '__init_function_register_replace' ($?)."
+                fi
+            else
+                __tlogte "Problems checking if '__some_registered_function' is registered on stage '100' ($?)."
+                declare -p __INIT_STAGE_ARRAY_100
+            fi
+        else
+            __tlogte "Problems registering '__some_registered_function' on stage '100' ($?)."
+        fi
+    else
+        __tlogte "Problems checking if stage '100' is registered ($?)."
+    fi
+else
+    __tlogte "Problems registering stage '100' ($?)."
+fi
