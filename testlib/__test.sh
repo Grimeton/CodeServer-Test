@@ -2,10 +2,10 @@
 set -o nounset
 set -o errexit
 
-declare -grx GLOBAL_DEBUG=1
-declare -grx GLOBAL_VERBOSE=1
-declare -grx C_DEBUG=1
-declare -grx C_VERBOSE=1
+declare -gx GLOBAL_DEBUG=1
+declare -gx GLOBAL_VERBOSE=1
+declare -gx C_DEBUG=1
+declare -gx C_VERBOSE=1
 
 declare __T_PWD="$(realpath "$(dirname "${0}")")"
 
@@ -17,22 +17,8 @@ function __trap_error() {
     exit 252
 }
 trap '__trap_error ${LINENO} ${FUNCNAME[@]} ${BASH_SOURCE[@]}' ERR
-declare -i __T_SEARCH_COUNTER=0
-declare __T_SEARCH_DIRECTORY="${__T_PWD}"
 
-while ([[ ! -d "${__T_SEARCH_DIRECTORY}/images" ]] && [[ ${__T_SEARCH_COUNTER} -lt 10 ]]); do
-    __T_SEARCH_DIRECTORY+="/.."
-    ((__T_SEARCH_COUNTER++)) || true
-done
-
-if [[ -d "${__T_SEARCH_DIRECTORY}/images" ]]; then
-    if __T_SEARCH_DIRECTORY="$(realpath "${__T_SEARCH_DIRECTORY}/images")"; then
-        true
-    else
-        echo "Cannot find the images directory. Exiting." >&2
-        exit 253
-    fi
-fi
+declare __T_SEARCH_DIRECTORY="/data/Project/CodeServer-Image/code-server/images"
 
 if [[ -f "${__T_SEARCH_DIRECTORY}/base/all/lib/lib_loader.sh" ]]; then
 
@@ -48,9 +34,19 @@ if [[ -f "${__T_SEARCH_DIRECTORY}/base/all/lib/lib_loader.sh" ]]; then
 
         __T_ERROR=$?
         echo "Error loading library (${__T_ERROR})..." >&2
-        return ${__T_ERROR}
+        exit ${__T_ERROR}
     fi
 fi
+
+declare -gx __TLOG_BASEDIR="$(realpath "$(dirname "${0}")")"
+if [[ -d "${__TLOG_BASEDIR}/tests" ]]; then
+    declare -gx __TLOG_TESTDIR="${__TLOG_BASEDIR}/tests"
+fi
+
+if [[ -d "${__TLOG_BASEDIR}/scripts" ]]; then
+    declare -gx __TLOG_SCRIPTSDIR="${__TLOG_BASEDIR}/scripts"
+fi
+
 
 if declare -p __G_LIBRARIES >/dev/null 2>&1; then
     unset __G_LIBRARIES
@@ -233,7 +229,7 @@ function __tlog_start() {
     unset __T_CN
 
     __tlog "\n\n"
-    __tlog "===== BEGINNING TESTS.... ====="
+    __tlog "===== BEGINNING TESTS.... =====\n\n"
     trap __tlog_end EXIT
 }
 function __tlog_end() {
@@ -714,6 +710,7 @@ function __tlogts() {
     unset __T_LOG_MESSAGE
 }
 function __tlogtsig() {
+    declare -i __T_LAST_ERROR=$?
     declare -r __T_REGEX_NUMBER='^[0-9]+$'
     if [[ "${@:1:1}x" == "x" ]]; then
         return 2
@@ -724,8 +721,9 @@ function __tlogtsig() {
     fi
 
     if [[ "${@:2:1}x" == "x" ]]; then
-        return 12
+        declare __P_FUNCTION=""
     elif [[ "${@:2:1}" =~ ${__T_REGEX_NUMBER} ]]; then
+        declare __P_FUNCTION="${@:2:1}"
         declare __P_SIGNAL_GOT=${@:2:1}
     elif [[ "$(type -t "${@:2:1}")" == "function" ]]; then
         declare __P_FUNCTION="${@:2:1}"
@@ -739,7 +737,7 @@ function __tlogtsig() {
         declare -a __P_FUNCTIONPARAMETERS=("${@:3}")
     fi
 
-    if [[ -n ${__P_FUNCTION+x} ]]; then
+    if [[ -n ${__P_FUNCTION:+x} ]]; then
         if [[ ${#__P_FUNCTIONPARAMETERS[@]} -gt 0 ]]; then
             if ${__P_FUNCTION} "${__P_FUNCTIONPARAMETERS[@]}"; then
                 declare -i __T_ERROR=$?
@@ -754,6 +752,8 @@ function __tlogtsig() {
             fi
         fi
         declare -i __T_SIGNAL_GOT=${__T_ERROR}
+    elif [[ "${__P_FUNCTION}x" == "x" ]]; then
+        declare -i __T_SIGNAL_GOT=${__T_LAST_ERROR}
     else
         declare -i __T_SIGNAL_GOT=${__P_SIGNAL_GOT}
     fi
@@ -802,11 +802,7 @@ function __tlogw() {
 
     return 0
 }
-######
-#
-# - Tests to test the library
 
-__tlog_start
 #####
 #
 # - lib_base.sh
@@ -822,9 +818,24 @@ function __log__print() { return 0; }
 function __log__write() { return 0; }
 
 if [[ -d "${__T_PWD}/tests" ]]; then
-    for ___T_FILE in "${__T_PWD}/tests/"*.sh; do
+    declare -a __T_TESTFILES=()
+    for __T_FILE in "${__T_PWD}/tests"/*.sh; do
+        if [[ -f "${__T_FILE}" ]]; then
+            __T_TESTFILES+=("$(realpath "${__T_FILE}")")
+        fi
+    done
+
+    if [[ ${#__T_TESTFILES[@]} -lt 1 ]]; then
+        __tlog "\nNo tests found.\n"
+        exit 0
+    fi
+
+    __tlog_start
+
+    for ___T_FILE in "${__T_TESTFILES[@]}"; do
         if [[ -f "${___T_FILE}" ]]; then
             source "${___T_FILE}"
         fi
     done
+
 fi

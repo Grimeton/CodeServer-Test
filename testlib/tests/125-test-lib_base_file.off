@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+#
+#
+# Copyright (c) 2020, <grimeton@gmx.net>
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the software/distribution.
+#
+# 3. If we meet some day, and you think this stuff is worth it,
+#    you can buy me a beer in return, Grimeton.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+__lib_require "rootlayout"
+
+__T_ROOTFS_FILES=()
+__T_ROOTFS_STAGING_FILES=()
+GLOBAL_DISTRIBUTION_ID=ubuntu
+GLOBAL_DISTRIBUTION_VERSION_ID=18.04
+GLOBAL_DISTRIBUTION_NAME="Ubuntu"
+GLOBAL_DISTRIBUTION_VERSION_CODENAME="bionic"
+GLOBAL_CONFIG_FILE="$(mktemp)"
+GLOBAL_CONFIG_FILENAME="$(basename "${GLOBAL_CONFIG_FILE}")"
+THIS_DISTRIBUTION_ID="${GLOBAL_DISTRIBUTION_ID}"
+THIS_DISTRIBUTION_VERSION_ID="${GLOBAL_DISTRIBUTION_VERSION_ID}"
+THIS_DISTRIBUTION_NAME="${GLOBAL_DISTRIBUTION_NAME}"
+THIS_DISTRIBUTION_VERSION_CODENAME="${GLOBAL_DISTRIBUTION_VERSION_CODENAME}"
+THIS_CONFIG_FILE="${GLOBAL_CONFIG_FILE}"
+THIS_CONFIG_FILENAME="${GLOBAL_CONFIG_FILENAME}"
+declare THIS_LIB_CONFIG_VERIFY_FILE=""
+if __lib_file_get_full_path "config_verify" THIS_LIB_CONFIG_VERIFY_FILE "${THIS_DISTRIBUTION_ID}" "${THIS_DISTRIBUTION_VERSION_ID}" base; then
+    true
+else
+    echo "Problems getting full path for 'lib_config_verify.sh' ($?)."
+    return 249
+fi
+
+if source "${THIS_LIB_CONFIG_VERIFY_FILE}"; then
+    true
+else
+    echo "Problems sourcing '${THIS_LIB_CONFIG_VERIFY_FILE}' ($?)."
+    return 248
+fi
+
+declare -gx GLOBAL_DEBUG=1
+declare -gx GLOBAL_VERBOSE=1
+declare -gx C_DEBUG=1
+declare -gx C_VERBOSE=1
+
+__environment_save_file "${THIS_CONFIG_FILE}" "${__REGISTERED_VARIABLES[@]}"
+
+if __rootlayout_init; then
+    true
+else
+    echo "__rootlayout_init $?"
+fi
+
+if __rootlayout_copy_stages "${THIS_DISTRIBUTION_ID}" "${THIS_DISTRIBUTION_VERSION_ID}" base run; then
+    true
+else
+    echo "__rootlayout_copy_stages $?"
+fi
+
+if __rootlayout_copyto "${THIS_CONFIG_FILE}" "/usr/local/lib/init/settings.conf"; then
+    true
+else
+    echo "__rootlayout_copyto $?"
+fi
+if rm -f "${THIS_CONFIG_FILE}"; then
+    unset THIS_CONFIG_FILE THIS_CONFIG_FILENAME
+fi
+
+if [[ -x "${__TLOG_SCRIPTSDIR}/125-test-lib_base_file.sh" ]]; then
+    /usr/bin/env -i NEW_ROOT="${__ROOTLAYOUT_ROOTDIRECTORY}" "${__TLOG_SCRIPTSDIR}/125-test-lib_base_file.sh"
+    declare -i __T_ERROR=$?
+    __rootlayout_destroy
+    return ${__T_ERROR}
+else
+    __rootlayout_destroy
+    return 254
+fi
