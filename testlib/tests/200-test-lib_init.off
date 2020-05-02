@@ -19,7 +19,7 @@ fi
 #
 # - lib_init.sh
 #
-if __lib_package_load "init" "${ID}" "${VERSION_ID}" "base,build"; then
+if __lib_package_load "init" "${ID}" "${VERSION_ID}" "base" "build"; then
     __tlog "Loaded the init package...\n"
 else
     declare -i __T_ERROR=$?
